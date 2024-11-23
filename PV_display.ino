@@ -108,18 +108,19 @@ void loop() {
       int fotovoltaico = powerData.fotovoltaico;
       int utilizzo = fotovoltaico - disponibile;
 
-      int textHeight = 40;
+      int paddingBottom = 40;
+      int distanceYLabelValue = 40;
       int totHeight = tft.height();
       int totWidth = tft.width();
 
       int topLeftX = 120;
-      int topLeftY = totHeight / 4 - 40;
+      int topLeftY = totHeight / 4 - paddingBottom;
       
       int topRightX = totWidth / 4 * 3;
-      int topRightY = totHeight / 4 - 40;
+      int topRightY = totHeight / 4 - paddingBottom;
       
       int bottomCenterX = totWidth / 2;
-      int bottomCenterY = totHeight / 4 * 3 - 40;
+      int bottomCenterY = totHeight / 4 * 3 - paddingBottom;
 
       tft.fillScreen(TFT_BLACK);
 
@@ -131,7 +132,7 @@ void loop() {
 
       tft.setTextSize(1);
       tft.setTextColor(TFT_YELLOW);
-      tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + 40, 7);
+      tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + distanceYLabelValue, 7);
       tft.println(String(fotovoltaico));
 
       // Utilizzo
@@ -142,7 +143,7 @@ void loop() {
 
       tft.setTextSize(1);
       tft.setTextColor(TFT_YELLOW);
-      tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + 40, 7);
+      tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + distanceYLabelValue, 7);
       tft.println(String(utilizzo));
 
       // Disponibile
@@ -159,7 +160,7 @@ void loop() {
       }
 
       tft.setTextSize(1);
-      tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + 40, 7);
+      tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + distanceYLabelValue, 7);
       tft.println(String(disponibile));
 
       progressBarAndDelay();
