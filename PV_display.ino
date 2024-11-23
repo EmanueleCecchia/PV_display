@@ -6,8 +6,7 @@
 WiFiClient wifiClient;
 HttpClient httpClient = HttpClient(wifiClient, shelly_ip, 80);
 
-// Initialize the TFT display
-TFT_eSPI tft = TFT_eSPI();  // Create an object for the TFT display
+TFT_eSPI tft = TFT_eSPI();
 
 void initWiFi() {
   WiFi.mode(WIFI_STA);
@@ -21,16 +20,13 @@ void initWiFi() {
   Serial.println(WiFi.localIP());
 }
 
-void drawProgressBar(int progress) {
+void drawProgressBarSmooth(int progress) {
   int barWidth = tft.width() - 4;  // Width of the progress bar (leaving some margin)
   int barHeight = 10;              // Height of the progress bar
   int x = 2;                       // X position for the progress bar
   int y = tft.height() - barHeight - 2;  // Y position near the bottom
 
-  // Draw a background bar
-  tft.fillRect(x, y, barWidth, barHeight, TFT_DARKGREY);
-
-  // Draw the filled progress bar
+  // Draw the filled portion of the progress bar
   int filledWidth = map(progress, 0, 100, 0, barWidth);
   tft.fillRect(x, y, filledWidth, barHeight, TFT_WHITE);
 }
@@ -41,9 +37,9 @@ void setup() {
   
   // Initialize TFT display
   tft.init();
-  tft.setRotation(3);  // Set rotation to 1 for horizontal orientation
+  tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);  // Clear the screen
-  tft.setTextColor(TFT_WHITE);  // Set text color to white
+  tft.setTextColor(TFT_WHITE);
 
   // Initialize Wi-Fi
   initWiFi();
@@ -52,29 +48,24 @@ void setup() {
 }
 
 void loop() {
-  int progress = 0;  // Progress variable (0 to 100)
+  int progress = 0;
   
   // Make sure WiFi is connected
   if (WiFi.status() == WL_CONNECTED) {
-    // Prepare the request
     String url = "/status";
-    httpClient.beginRequest();  // Start the request
-    httpClient.get(url);  // Use GET request
+    httpClient.beginRequest();
+    httpClient.get(url);
 
-    // If using authentication, set the username and password
     if (String(shelly_username) != "" && String(shelly_password) != "") {
       httpClient.sendBasicAuth(shelly_username, shelly_password);
     }
 
-    // End the request
     httpClient.endRequest();
 
-    // Read the response
     int statusCode = httpClient.responseStatusCode();
     String responseBody = httpClient.responseBody();
 
     if (statusCode > 0) {
-      // Simple way to extract power values from JSON response (basic string search)
       int emeter0_power_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
       int emeter0_power_end = responseBody.indexOf(",", emeter0_power_start);
       String emeter0_power_str = responseBody.substring(emeter0_power_start + 8, emeter0_power_end);
@@ -87,8 +78,7 @@ void loop() {
       float emeter1_power_float = emeter1_power_str.toFloat();
       int emeter1_power = (int)emeter1_power_float;  // Convert to int to remove decimals
 
-      // Display the power values on the TFT screen
-      tft.fillScreen(TFT_BLACK);  // Clear the screen
+      tft.fillScreen(TFT_BLACK);
 
       // Set cursor position for "Differenza" label
       int textHeight = 40; // Height of the text line (can be adjusted based on font size)
@@ -116,10 +106,10 @@ void loop() {
       tft.setCursor((tft.width() - tft.textWidth(String(emeter1_power) + " W", 7)) / 2, emeter1PowerY, 7);
       tft.println(String(emeter1_power) + " W");
 
-      // Show progress bar incrementally
+      tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Sfondo barra
       for (progress = 0; progress <= 100; progress++) {
-        drawProgressBar(progress);
-        delay(50);  // Small delay to visualize progress
+        drawProgressBarSmooth(progress);
+        delay(50);
       }
     } else {
       Serial.println("Error on HTTP request: " + String(statusCode));
