@@ -26,6 +26,18 @@ void initWiFi() {
   Serial.println(WiFi.localIP());
 }
 
+void shellyHttpRequest() {
+    String url = "/status";
+    httpClient.beginRequest();
+    httpClient.get(url);
+
+    if (String(shelly_username) != "" && String(shelly_password) != "") {
+      httpClient.sendBasicAuth(shelly_username, shelly_password);
+    }
+
+    httpClient.endRequest();
+}
+
 PowerData getPowerData(String responseBody) {
   PowerData data;
 
@@ -73,20 +85,10 @@ void setup() {
 }
 
 void loop() {
-  int progress = 0;
-
   // Make sure WiFi is connected
   if (WiFi.status() == WL_CONNECTED) {
-    String url = "/status";
-    httpClient.beginRequest();
-    httpClient.get(url);
 
-    if (String(shelly_username) != "" && String(shelly_password) != "") {
-      httpClient.sendBasicAuth(shelly_username, shelly_password);
-    }
-
-    httpClient.endRequest();
-
+    shellyHttpRequest();
     int statusCode = httpClient.responseStatusCode();
     String responseBody = httpClient.responseBody();
 
@@ -152,6 +154,7 @@ void loop() {
       tft.println(String(disponibile));
 
       // Draw progress bar and delay
+      int progress = 0;
       tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Background bar
       for (progress = 0; progress <= 100; progress++) {
         drawProgressBarSmooth(progress);
