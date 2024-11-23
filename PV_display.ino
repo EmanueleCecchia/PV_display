@@ -98,27 +98,39 @@ void loop() {
       int bottomCenterY = totHeight / 4 * 3 - 40;
 
       // Fotovoltaico
-      tft.setTextSize(3);
-      tft.setCursor(topLeftX - tft.textWidth("Fotovoltaico", 1) / 2, topLeftY, 1);
-      tft.println("Fotovoltaico");
+      tft.setTextSize(1);
+      tft.setTextColor(TFT_WHITE);
+      tft.setCursor(topLeftX - tft.textWidth("FOTOVOLTAICO", 4) / 2, topLeftY, 4);
+      tft.println("FOTOVOLTAICO");
 
       tft.setTextSize(1);
+      tft.setTextColor(TFT_YELLOW);
       tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + 40, 7);
       tft.println(String(fotovoltaico));
 
       // Utilizzo
-      tft.setTextSize(3);
-      tft.setCursor(topRightX - tft.textWidth("Utilizzo", 1) / 2, topRightY, 1);
-      tft.println("Utilizzo");
+      tft.setTextSize(1);
+      tft.setTextColor(TFT_WHITE);
+      tft.setCursor(topRightX - tft.textWidth("UTILIZZO", 4) / 2, topRightY, 4);
+      tft.println("UTILIZZO");
 
       tft.setTextSize(1);
+      tft.setTextColor(TFT_YELLOW);
       tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + 40, 7);
       tft.println(String(utilizzo));
 
       // Disponibile
-      tft.setTextSize(3);
-      tft.setCursor(bottomCenterX - tft.textWidth("Disponibile", 1) / 2, bottomCenterY, 1);
-      tft.println("Disponibile");
+      tft.setTextSize(1);
+      tft.setTextColor(TFT_WHITE);
+      tft.setCursor(bottomCenterX - tft.textWidth("DISPONIBILE", 4) / 2, bottomCenterY, 4);
+      tft.println("DISPONIBILE");
+
+      // Change text color based on the value of "disponibile"
+      if (disponibile < 0) {
+        tft.setTextColor(TFT_RED, TFT_BLACK);
+      } else {
+        tft.setTextColor(TFT_GREEN, TFT_BLACK);
+      }
 
       tft.setTextSize(1);
       tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + 40, 7);
