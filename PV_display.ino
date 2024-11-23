@@ -57,6 +57,15 @@ PowerData getPowerData(String responseBody) {
   return data;
 }
 
+void progressBarAndDelay() {
+    int progress = 0;
+    tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Background bar
+    for (progress = 0; progress <= 100; progress++) {
+      drawProgressBarSmooth(progress);
+      delay(50);
+    }
+}
+
 void drawProgressBarSmooth(int progress) {
   int barWidth = tft.width() - 4;  // Width of the progress bar (leaving some margin)
   int barHeight = 10;              // Height of the progress bar
@@ -153,13 +162,7 @@ void loop() {
       tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + 40, 7);
       tft.println(String(disponibile));
 
-      // Draw progress bar and delay
-      int progress = 0;
-      tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Background bar
-      for (progress = 0; progress <= 100; progress++) {
-        drawProgressBarSmooth(progress);
-        delay(50);
-      }
+      progressBarAndDelay();
     } else {
       Serial.println("Error on HTTP request: " + String(statusCode));
     }
