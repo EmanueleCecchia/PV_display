@@ -77,48 +77,50 @@ void loop() {
       String fotovoltaico_str = responseBody.substring(fotovoltaico_start + 8, fotovoltaico_end);
       float fotovoltaico_float = fotovoltaico_str.toFloat();
       int fotovoltaico = (int)fotovoltaico_float;
+      fotovoltaico = (fotovoltaico < 0) ? 0 : fotovoltaico;
 
       // Calculate Utilizzo
-      int utilizzo_power = fotovoltaico - disponibile;
+      int utilizzo = fotovoltaico - disponibile;
 
       tft.fillScreen(TFT_BLACK);
 
       // Set cursor position for "Fotovoltaico" label (top left)
-      int textHeight = 50;
-      int totalHeight = tft.height();
-      int prodLabelY = (totalHeight / 4) - (textHeight / 2);
+      int textHeight = 40;
+      int totHeight = tft.height();
+      int totWidth = tft.width();
+
+      int topLeftX = 120;
+      int topLeftY = totHeight / 4 - 40;
+      
+      int topRightX = totWidth / 4 * 3;
+      int topRightY = totHeight / 4 - 40;
+      
+      int bottomCenterX = totWidth / 2;
+      int bottomCenterY = totHeight / 4 * 3 - 40;
+
+
       tft.setTextSize(3);
-      tft.setCursor((tft.width() - tft.textWidth("Fotovoltaico:", 1)) / 4, prodLabelY, 1);
+      tft.setCursor(topLeftX - tft.textWidth("Fotovoltaico", 1) / 2, topLeftY, 1);
       tft.println("Fotovoltaico");
 
-      // Set cursor position for "Fotovoltaico" value
-      int prodValueX = (tft.width() - tft.textWidth("Fotovoltaico", 1)) / 4;
       tft.setTextSize(1);
-      tft.setCursor(prodValueX, prodLabelY + textHeight / 2, 7);
+      tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + 40, 7);
       tft.println(String(fotovoltaico));
 
-      // Set cursor position for "Utilizzo" label (on the same row as "Fotovoltaico")
-      int utilLabelX = prodValueX + tft.textWidth(String(fotovoltaico), 7) + 100;
       tft.setTextSize(3);
-      tft.setCursor(utilLabelX, prodLabelY, 1);
+      tft.setCursor(topRightX - tft.textWidth("Utilizzo", 1) / 2, topRightY, 1);
       tft.println("Utilizzo");
 
-      // Set cursor position for "Utilizzo" value
-      int utilValueX = utilLabelX;
       tft.setTextSize(1);
-      tft.setCursor(utilValueX, prodLabelY + textHeight / 2, 7);
-      tft.println(String(utilizzo_power));
+      tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + 40, 7);
+      tft.println(String(utilizzo));
 
-      // Set cursor position for "Disponibile" label (bottom center)
-      int dispLabelY = (totalHeight * 2.5 / 4) - (textHeight / 2);
       tft.setTextSize(3);
-      tft.setCursor((tft.width() - tft.textWidth("Disponibile:", 1)) / 2, dispLabelY, 1);
+      tft.setCursor(bottomCenterX - tft.textWidth("Disponibile", 1) / 2, bottomCenterY, 1);
       tft.println("Disponibile");
 
-      // Set cursor position for "Disponibile" value
-      int dispValueY = dispLabelY + textHeight;
       tft.setTextSize(1);
-      tft.setCursor((tft.width() - tft.textWidth(String(disponibile), 7)) / 2, dispValueY, 7);
+      tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + 40, 7);
       tft.println(String(disponibile));
 
       // Draw progress bar
