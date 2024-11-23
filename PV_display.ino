@@ -8,6 +8,12 @@ HttpClient httpClient = HttpClient(wifiClient, shelly_ip, 80);
 
 TFT_eSPI tft = TFT_eSPI();
 
+struct PowerData {
+  int disponibile;
+  int fotovoltaico;
+};
+
+
 void initWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -18,6 +24,25 @@ void initWiFi() {
     delay(1000);
   }
   Serial.println(WiFi.localIP());
+}
+
+PowerData getPowerData(String responseBody) {
+  PowerData data;
+
+  // Extract "disponibile"
+  int disponibile_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
+  int disponibile_end = responseBody.indexOf(",", disponibile_start);
+  String disponibile_str = responseBody.substring(disponibile_start + 8, disponibile_end);
+  data.disponibile = (int)disponibile_str.toFloat();
+
+  // Extract "fotovoltaico"
+  int fotovoltaico_start = responseBody.indexOf("\"power\":", disponibile_end);
+  int fotovoltaico_end = responseBody.indexOf(",", fotovoltaico_start);
+  String fotovoltaico_str = responseBody.substring(fotovoltaico_start + 8, fotovoltaico_end);
+  float fotovoltaico_float = fotovoltaico_str.toFloat();
+  data.fotovoltaico = (fotovoltaico_float < 0) ? 0 : (int)fotovoltaico_float;
+
+  return data;
 }
 
 void drawProgressBarSmooth(int progress) {
@@ -38,7 +63,7 @@ void setup() {
   // Initialize TFT display
   tft.init();
   tft.setRotation(3);
-  tft.fillScreen(TFT_BLACK);  // Clear the screen
+  tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
 
   // Initialize Wi-Fi
@@ -66,23 +91,11 @@ void loop() {
     String responseBody = httpClient.responseBody();
 
     if (statusCode > 0) {
-      int disponibile_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
-      int disponibile_end = responseBody.indexOf(",", disponibile_start);
-      String disponibile_str = responseBody.substring(disponibile_start + 8, disponibile_end);
-      float disponibile_float = disponibile_str.toFloat();
-      int disponibile = (int)disponibile_float;
+      PowerData powerData = getPowerData(responseBody);
 
-      int fotovoltaico_start = responseBody.indexOf("\"power\":", disponibile_end);
-      int fotovoltaico_end = responseBody.indexOf(",", fotovoltaico_start);
-      String fotovoltaico_str = responseBody.substring(fotovoltaico_start + 8, fotovoltaico_end);
-      float fotovoltaico_float = fotovoltaico_str.toFloat();
-      int fotovoltaico = (int)fotovoltaico_float;
-      fotovoltaico = (fotovoltaico < 0) ? 0 : fotovoltaico;
-
-      // Calculate Utilizzo
+      int disponibile = powerData.disponibile;
+      int fotovoltaico = powerData.fotovoltaico;
       int utilizzo = fotovoltaico - disponibile;
-
-      tft.fillScreen(TFT_BLACK);
 
       int textHeight = 40;
       int totHeight = tft.height();
@@ -96,6 +109,8 @@ void loop() {
       
       int bottomCenterX = totWidth / 2;
       int bottomCenterY = totHeight / 4 * 3 - 40;
+
+      tft.fillScreen(TFT_BLACK);
 
       // Fotovoltaico
       tft.setTextSize(1);
