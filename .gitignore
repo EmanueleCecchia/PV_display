@@ -1,3 +1,6 @@
+# Ignore credential files
+credentials.h
+
 # Build and Release Folders
 bin-debug/
 bin-release/
