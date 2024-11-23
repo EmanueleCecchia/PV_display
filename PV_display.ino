@@ -77,6 +77,63 @@ void drawProgressBarSmooth(int progress) {
   tft.fillRect(x, y, filledWidth, barHeight, TFT_WHITE);
 }
 
+void printData(int disponibile, int fotovoltaico, int utilizzo) {
+  int paddingBottom = 40;
+  int distanceYLabelValue = 40;
+  int totHeight = tft.height();
+  int totWidth = tft.width();
+
+  int topLeftX = 120;
+  int topLeftY = totHeight / 4 - paddingBottom;
+  
+  int topRightX = totWidth / 4 * 3;
+  int topRightY = totHeight / 4 - paddingBottom;
+  
+  int bottomCenterX = totWidth / 2;
+  int bottomCenterY = totHeight / 4 * 3 - paddingBottom;
+
+  tft.fillScreen(TFT_BLACK);
+
+  // Fotovoltaico
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(topLeftX - tft.textWidth("FOTOVOLTAICO", 4) / 2, topLeftY, 4);
+  tft.println("FOTOVOLTAICO");
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_YELLOW);
+  tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + distanceYLabelValue, 7);
+  tft.println(String(fotovoltaico));
+
+  // Utilizzo
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(topRightX - tft.textWidth("UTILIZZO", 4) / 2, topRightY, 4);
+  tft.println("UTILIZZO");
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_YELLOW);
+  tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + distanceYLabelValue, 7);
+  tft.println(String(utilizzo));
+
+  // Disponibile
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(bottomCenterX - tft.textWidth("DISPONIBILE", 4) / 2, bottomCenterY, 4);
+  tft.println("DISPONIBILE");
+
+  // Change text color based on the value of "disponibile"
+  if (disponibile < 0) {
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+  } else {
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+  }
+
+  tft.setTextSize(1);
+  tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + distanceYLabelValue, 7);
+  tft.println(String(disponibile));
+}
+
 void setup() {
   Serial.begin(115200);
   delay(10);
@@ -102,68 +159,16 @@ void loop() {
     String responseBody = httpClient.responseBody();
 
     if (statusCode > 0) {
+
       PowerData powerData = getPowerData(responseBody);
 
       int disponibile = powerData.disponibile;
       int fotovoltaico = powerData.fotovoltaico;
       int utilizzo = fotovoltaico - disponibile;
-
-      int paddingBottom = 40;
-      int distanceYLabelValue = 40;
-      int totHeight = tft.height();
-      int totWidth = tft.width();
-
-      int topLeftX = 120;
-      int topLeftY = totHeight / 4 - paddingBottom;
-      
-      int topRightX = totWidth / 4 * 3;
-      int topRightY = totHeight / 4 - paddingBottom;
-      
-      int bottomCenterX = totWidth / 2;
-      int bottomCenterY = totHeight / 4 * 3 - paddingBottom;
-
-      tft.fillScreen(TFT_BLACK);
-
-      // Fotovoltaico
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_WHITE);
-      tft.setCursor(topLeftX - tft.textWidth("FOTOVOLTAICO", 4) / 2, topLeftY, 4);
-      tft.println("FOTOVOLTAICO");
-
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_YELLOW);
-      tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + distanceYLabelValue, 7);
-      tft.println(String(fotovoltaico));
-
-      // Utilizzo
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_WHITE);
-      tft.setCursor(topRightX - tft.textWidth("UTILIZZO", 4) / 2, topRightY, 4);
-      tft.println("UTILIZZO");
-
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_YELLOW);
-      tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + distanceYLabelValue, 7);
-      tft.println(String(utilizzo));
-
-      // Disponibile
-      tft.setTextSize(1);
-      tft.setTextColor(TFT_WHITE);
-      tft.setCursor(bottomCenterX - tft.textWidth("DISPONIBILE", 4) / 2, bottomCenterY, 4);
-      tft.println("DISPONIBILE");
-
-      // Change text color based on the value of "disponibile"
-      if (disponibile < 0) {
-        tft.setTextColor(TFT_RED, TFT_BLACK);
-      } else {
-        tft.setTextColor(TFT_GREEN, TFT_BLACK);
-      }
-
-      tft.setTextSize(1);
-      tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + distanceYLabelValue, 7);
-      tft.println(String(disponibile));
+      printData(disponibile, fotovoltaico, utilizzo);
 
       progressBarAndDelay();
+      
     } else {
       Serial.println("Error on HTTP request: " + String(statusCode));
     }
