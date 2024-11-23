@@ -49,7 +49,7 @@ void setup() {
 
 void loop() {
   int progress = 0;
-  
+
   // Make sure WiFi is connected
   if (WiFi.status() == WL_CONNECTED) {
     String url = "/status";
@@ -66,47 +66,63 @@ void loop() {
     String responseBody = httpClient.responseBody();
 
     if (statusCode > 0) {
-      int emeter0_power_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
-      int emeter0_power_end = responseBody.indexOf(",", emeter0_power_start);
-      String emeter0_power_str = responseBody.substring(emeter0_power_start + 8, emeter0_power_end);
-      float emeter0_power_float = emeter0_power_str.toFloat();
-      int emeter0_power = (int)emeter0_power_float;  // Convert to int to remove decimals
+      int disponibile_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
+      int disponibile_end = responseBody.indexOf(",", disponibile_start);
+      String disponibile_str = responseBody.substring(disponibile_start + 8, disponibile_end);
+      float disponibile_float = disponibile_str.toFloat();
+      int disponibile = (int)disponibile_float;
 
-      int emeter1_power_start = responseBody.indexOf("\"power\":", emeter0_power_end);
-      int emeter1_power_end = responseBody.indexOf(",", emeter1_power_start);
-      String emeter1_power_str = responseBody.substring(emeter1_power_start + 8, emeter1_power_end);
-      float emeter1_power_float = emeter1_power_str.toFloat();
-      int emeter1_power = (int)emeter1_power_float;  // Convert to int to remove decimals
+      int fotovoltaico_start = responseBody.indexOf("\"power\":", disponibile_end);
+      int fotovoltaico_end = responseBody.indexOf(",", fotovoltaico_start);
+      String fotovoltaico_str = responseBody.substring(fotovoltaico_start + 8, fotovoltaico_end);
+      float fotovoltaico_float = fotovoltaico_str.toFloat();
+      int fotovoltaico = (int)fotovoltaico_float;
+
+      // Calculate Utilizzo
+      int utilizzo_power = fotovoltaico - disponibile;
 
       tft.fillScreen(TFT_BLACK);
 
-      // Set cursor position for "Differenza" label
-      int textHeight = 40; // Height of the text line (can be adjusted based on font size)
+      // Set cursor position for "Fotovoltaico" label (top left)
+      int textHeight = 50;
       int totalHeight = tft.height();
-      int diffLabelY = (totalHeight / 4) - (textHeight / 2);  // Vertical center for first label
+      int prodLabelY = (totalHeight / 4) - (textHeight / 2);
       tft.setTextSize(3);
-      tft.setCursor((tft.width() - tft.textWidth("Differenza:", 1)) / 2, diffLabelY, 1);
-      tft.println("Differenza:");
+      tft.setCursor((tft.width() - tft.textWidth("Fotovoltaico:", 1)) / 4, prodLabelY, 1);
+      tft.println("Fotovoltaico");
 
-      // Set cursor position for emeter0_power value
-      int emeter0PowerY = diffLabelY + textHeight;
+      // Set cursor position for "Fotovoltaico" value
+      int prodValueX = (tft.width() - tft.textWidth("Fotovoltaico", 1)) / 4;
       tft.setTextSize(1);
-      tft.setCursor((tft.width() - tft.textWidth(String(emeter0_power) + " W", 7)) / 2, emeter0PowerY, 7);
-      tft.println(String(emeter0_power) + " W");
+      tft.setCursor(prodValueX, prodLabelY + textHeight / 2, 7);
+      tft.println(String(fotovoltaico));
 
-      // Set cursor position for "Produzione" label
-      int prodLabelY = (totalHeight * 2.5 / 4) - (textHeight / 2);  // Vertical center for second label
+      // Set cursor position for "Utilizzo" label (on the same row as "Fotovoltaico")
+      int utilLabelX = prodValueX + tft.textWidth(String(fotovoltaico), 7) + 100;
       tft.setTextSize(3);
-      tft.setCursor((tft.width() - tft.textWidth("Produzione:", 1)) / 2, prodLabelY, 1);
-      tft.println("Produzione:");
+      tft.setCursor(utilLabelX, prodLabelY, 1);
+      tft.println("Utilizzo");
 
-      // Set cursor position for emeter1_power value
-      int emeter1PowerY = prodLabelY + textHeight;
+      // Set cursor position for "Utilizzo" value
+      int utilValueX = utilLabelX;
       tft.setTextSize(1);
-      tft.setCursor((tft.width() - tft.textWidth(String(emeter1_power) + " W", 7)) / 2, emeter1PowerY, 7);
-      tft.println(String(emeter1_power) + " W");
+      tft.setCursor(utilValueX, prodLabelY + textHeight / 2, 7);
+      tft.println(String(utilizzo_power));
 
-      tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Sfondo barra
+      // Set cursor position for "Disponibile" label (bottom center)
+      int dispLabelY = (totalHeight * 2.5 / 4) - (textHeight / 2);
+      tft.setTextSize(3);
+      tft.setCursor((tft.width() - tft.textWidth("Disponibile:", 1)) / 2, dispLabelY, 1);
+      tft.println("Disponibile");
+
+      // Set cursor position for "Disponibile" value
+      int dispValueY = dispLabelY + textHeight;
+      tft.setTextSize(1);
+      tft.setCursor((tft.width() - tft.textWidth(String(disponibile), 7)) / 2, dispValueY, 7);
+      tft.println(String(disponibile));
+
+      // Draw progress bar
+      tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Background bar
       for (progress = 0; progress <= 100; progress++) {
         drawProgressBarSmooth(progress);
         delay(50);
@@ -117,5 +133,6 @@ void loop() {
   }
 
   // Wait before sending another request
-  //delay(5000);
+  delay(5000);
 }
+
