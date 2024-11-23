@@ -84,7 +84,6 @@ void loop() {
 
       tft.fillScreen(TFT_BLACK);
 
-      // Set cursor position for "Fotovoltaico" label (top left)
       int textHeight = 40;
       int totHeight = tft.height();
       int totWidth = tft.width();
@@ -98,7 +97,7 @@ void loop() {
       int bottomCenterX = totWidth / 2;
       int bottomCenterY = totHeight / 4 * 3 - 40;
 
-
+      // Fotovoltaico
       tft.setTextSize(3);
       tft.setCursor(topLeftX - tft.textWidth("Fotovoltaico", 1) / 2, topLeftY, 1);
       tft.println("Fotovoltaico");
@@ -107,6 +106,7 @@ void loop() {
       tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + 40, 7);
       tft.println(String(fotovoltaico));
 
+      // Utilizzo
       tft.setTextSize(3);
       tft.setCursor(topRightX - tft.textWidth("Utilizzo", 1) / 2, topRightY, 1);
       tft.println("Utilizzo");
@@ -115,6 +115,7 @@ void loop() {
       tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + 40, 7);
       tft.println(String(utilizzo));
 
+      // Disponibile
       tft.setTextSize(3);
       tft.setCursor(bottomCenterX - tft.textWidth("Disponibile", 1) / 2, bottomCenterY, 1);
       tft.println("Disponibile");
@@ -123,7 +124,7 @@ void loop() {
       tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + 40, 7);
       tft.println(String(disponibile));
 
-      // Draw progress bar
+      // Draw progress bar and delay
       tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Background bar
       for (progress = 0; progress <= 100; progress++) {
         drawProgressBarSmooth(progress);
@@ -135,6 +136,6 @@ void loop() {
   }
 
   // Wait before sending another request
-  delay(5000);
+  //delay(5000);
 }
 
