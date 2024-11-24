@@ -18,7 +18,8 @@ void initWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi ..");
-  tft.println("Connecting to WiFi ..");
+  tft.print("Connecting to: "); tft.println(ssid);
+  tft.print("Shelly IP: "); tft.println(shelly_ip);
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print('.');
     delay(1000);
