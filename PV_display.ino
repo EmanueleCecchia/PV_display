@@ -13,6 +13,8 @@ struct PowerData {
   int fotovoltaico;
 };
 
+int peak;
+
 
 void initWiFi() {
   WiFi.mode(WIFI_STA);
@@ -78,13 +80,13 @@ void drawProgressBarSmooth(int progress) {
   tft.fillRect(x, y, filledWidth, barHeight, TFT_WHITE);
 }
 
-void printData(int disponibile, int fotovoltaico, int utilizzo) {
+void printData(int disponibile, int fotovoltaico, int utilizzo, int peak) {
   int paddingBottom = 40;
   int distanceYLabelValue = 40;
   int totHeight = tft.height();
   int totWidth = tft.width();
 
-  int topLeftX = 120;
+  int topLeftX = totWidth / 4;
   int topLeftY = totHeight / 4 - paddingBottom;
   
   int topRightX = totWidth / 4 * 3;
@@ -92,6 +94,12 @@ void printData(int disponibile, int fotovoltaico, int utilizzo) {
   
   int bottomCenterX = totWidth / 2;
   int bottomCenterY = totHeight / 4 * 3 - paddingBottom;
+
+  int bottomLeftX = totWidth / 4;
+  int bottomLeftY = totHeight / 4 * 3 - paddingBottom;
+  
+  int bottomRightX = totWidth / 4 * 3;
+  int bottomRightY = totHeight / 4 * 3 - paddingBottom;
 
   tft.fillScreen(TFT_BLACK);
 
@@ -120,7 +128,7 @@ void printData(int disponibile, int fotovoltaico, int utilizzo) {
   // Disponibile
   tft.setTextSize(1);
   tft.setTextColor(TFT_WHITE);
-  tft.setCursor(bottomCenterX - tft.textWidth("DISPONIBILE", 4) / 2, bottomCenterY, 4);
+  tft.setCursor(bottomLeftX - tft.textWidth("DISPONIBILE", 4) / 2, bottomLeftY, 4);
   tft.println("DISPONIBILE");
 
   // Change text color based on the value of "disponibile"
@@ -131,8 +139,19 @@ void printData(int disponibile, int fotovoltaico, int utilizzo) {
   }
 
   tft.setTextSize(1);
-  tft.setCursor(bottomCenterX - tft.textWidth(String(disponibile), 7) / 2, bottomCenterY + distanceYLabelValue, 7);
+  tft.setCursor(bottomLeftX - tft.textWidth(String(disponibile), 7) / 2, bottomLeftY + distanceYLabelValue, 7);
   tft.println(String(disponibile));
+
+  // Picco
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(bottomRightX - tft.textWidth("PICCO", 4) / 2, bottomRightY, 4);
+  tft.println("PICCO");
+
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_YELLOW);
+  tft.setCursor(bottomRightX - tft.textWidth(String(peak), 7) / 2, bottomRightY + distanceYLabelValue, 7);
+  tft.println(String(peak));
 }
 
 void setup() {
@@ -149,6 +168,7 @@ void setup() {
   initWiFi();
   Serial.print("RSSI: ");
   Serial.println(WiFi.RSSI());
+  peak = 0;
 }
 
 void loop() {
@@ -166,7 +186,8 @@ void loop() {
       int disponibile = powerData.disponibile;
       int fotovoltaico = powerData.fotovoltaico;
       int utilizzo = fotovoltaico - disponibile;
-      printData(disponibile, fotovoltaico, utilizzo);
+      if (fotovoltaico > peak) { peak = fotovoltaico; }
+      printData(disponibile, fotovoltaico, utilizzo, peak);
 
       progressBarAndDelay();
       
