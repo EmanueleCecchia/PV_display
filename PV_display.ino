@@ -15,6 +15,40 @@ struct PowerData {
   int peak;
 };
 
+struct Position {
+   int x;
+   int y;
+};
+
+struct Positions {
+   struct Position topLeft;
+   struct Position topRight;
+   struct Position bottomCenter;
+   struct Position bottomLeft;
+   struct Position bottomRight;
+};
+
+struct Positions calculatePositions(int width, int height, int paddingBottom) {
+   struct Positions pos;
+   
+   pos.topLeft.x = width / 4;
+   pos.topLeft.y = height / 4 - paddingBottom;
+   
+   pos.topRight.x = width / 4 * 3;
+   pos.topRight.y = height / 4 - paddingBottom;
+   
+   pos.bottomCenter.x = width / 2;
+   pos.bottomCenter.y = height / 4 * 3 - paddingBottom;
+   
+   pos.bottomLeft.x = width / 4;
+   pos.bottomLeft.y = height / 4 * 3 - paddingBottom;
+   
+   pos.bottomRight.x = width / 4 * 3;
+   pos.bottomRight.y = height / 4 * 3 - paddingBottom;
+   
+   return pos;
+}
+
 PowerData data;
 int peak;
 
@@ -88,78 +122,34 @@ void updatePeak(PowerData data) {
   if (data.photovoltaic > peak) { peak = data.photovoltaic; }
 }
 
-void printData(PowerData data, int peak) {
-  int paddingBottom = 40;
-  int distanceYLabelValue = 40;
-  int totHeight = tft.height();
-  int totWidth = tft.width();
-
-  int topLeftX = totWidth / 4;
-  int topLeftY = totHeight / 4 - paddingBottom;
-  
-  int topRightX = totWidth / 4 * 3;
-  int topRightY = totHeight / 4 - paddingBottom;
-  
-  int bottomCenterX = totWidth / 2;
-  int bottomCenterY = totHeight / 4 * 3 - paddingBottom;
-
-  int bottomLeftX = totWidth / 4;
-  int bottomLeftY = totHeight / 4 * 3 - paddingBottom;
-  
-  int bottomRightX = totWidth / 4 * 3;
-  int bottomRightY = totHeight / 4 * 3 - paddingBottom;
-
-  tft.fillScreen(TFT_BLACK);
-
-  // Fotovoltaico
+void printVariable(char* name,int value, Position position, int distanceYLabelValue, bool isColorDynamic = false) {
   tft.setTextSize(1);
   tft.setTextColor(TFT_WHITE);
-  tft.setCursor(topLeftX - tft.textWidth("FOTOVOLTAICO", 4) / 2, topLeftY, 4);
-  tft.println("FOTOVOLTAICO");
+  tft.setCursor(position.x - tft.textWidth(name, 4) / 2, position.y, 4);
+  tft.println(name);
 
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_YELLOW);
-  tft.setCursor(topLeftX - tft.textWidth(String(data.photovoltaic), 7) / 2, topLeftY + distanceYLabelValue, 7);
-  tft.println(String(data.photovoltaic));
-
-  // Utilizzo
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(topRightX - tft.textWidth("UTILIZZO", 4) / 2, topRightY, 4);
-  tft.println("UTILIZZO");
-
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_YELLOW);
-  tft.setCursor(topRightX - tft.textWidth(String(data.use), 7) / 2, topRightY + distanceYLabelValue, 7);
-  tft.println(String(data.use));
-
-  // Disponibile
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(bottomLeftX - tft.textWidth("DISPONIBILE", 4) / 2, bottomLeftY, 4);
-  tft.println("DISPONIBILE");
-
-  // Change text color based on the value of "disponibile"
-  if (data.available < 0) {
+  if (isColorDynamic == true && data.available < 0) {
     tft.setTextColor(TFT_RED, TFT_BLACK);
   } else {
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
   }
 
   tft.setTextSize(1);
-  tft.setCursor(bottomLeftX - tft.textWidth(String(data.available), 7) / 2, bottomLeftY + distanceYLabelValue, 7);
-  tft.println(String(data.available));
+  if (isColorDynamic == false) { tft.setTextColor(TFT_YELLOW); }
+  tft.setCursor(position.x - tft.textWidth(String(value), 7) / 2, position.y + distanceYLabelValue, 7);
+  tft.println(String(value));
+}
 
-  // Picco
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(bottomRightX - tft.textWidth("PICCO", 4) / 2, bottomRightY, 4);
-  tft.println("PICCO");
+void printData(PowerData data, int peak) {
+  struct Positions positions = calculatePositions(tft.width(), tft.height(), 50);
+  int distanceYLabelValue = 40;
 
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_YELLOW);
-  tft.setCursor(bottomRightX - tft.textWidth(String(peak), 7) / 2, bottomRightY + distanceYLabelValue, 7);
-  tft.println(String(peak));
+  tft.fillScreen(TFT_BLACK);
+
+  printVariable("FOTOVOLTAICO", data.photovoltaic, positions.topLeft, distanceYLabelValue);
+  printVariable("UTILIZZO", data.use, positions.topRight, distanceYLabelValue);
+  printVariable("DISPONIBILE", data.available, positions.bottomLeft, distanceYLabelValue, true);
+  printVariable("PICCO", peak, positions.bottomRight, distanceYLabelValue);
 }
 
 void setup() {
