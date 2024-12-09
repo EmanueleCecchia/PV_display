@@ -9,12 +9,14 @@ HttpClient httpClient = HttpClient(wifiClient, shelly_ip, 80);
 TFT_eSPI tft = TFT_eSPI();
 
 struct PowerData {
-  int disponibile;
-  int fotovoltaico;
+  int available;
+  int photovoltaic;
+  int use;
+  int peak;
 };
 
+PowerData data;
 int peak;
-
 
 void initWiFi() {
   WiFi.mode(WIFI_STA);
@@ -44,18 +46,20 @@ void shellyHttpRequest() {
 PowerData getPowerData(String responseBody) {
   PowerData data;
 
-  // Extract "disponibile"
+  // Extract "available"
   int disponibile_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
   int disponibile_end = responseBody.indexOf(",", disponibile_start);
   String disponibile_str = responseBody.substring(disponibile_start + 8, disponibile_end);
-  data.disponibile = (int)disponibile_str.toFloat();
+  data.available = (int)disponibile_str.toFloat();
 
-  // Extract "fotovoltaico"
+  // Extract "photovoltaic"
   int fotovoltaico_start = responseBody.indexOf("\"power\":", disponibile_end);
   int fotovoltaico_end = responseBody.indexOf(",", fotovoltaico_start);
   String fotovoltaico_str = responseBody.substring(fotovoltaico_start + 8, fotovoltaico_end);
   float fotovoltaico_float = fotovoltaico_str.toFloat();
-  data.fotovoltaico = (fotovoltaico_float < 0) ? 0 : (int)fotovoltaico_float;
+  data.photovoltaic = (fotovoltaico_float < 0) ? 0 : (int)fotovoltaico_float;
+
+  data.use = data.photovoltaic - data.available;
 
   return data;
 }
@@ -80,7 +84,11 @@ void drawProgressBarSmooth(int progress) {
   tft.fillRect(x, y, filledWidth, barHeight, TFT_WHITE);
 }
 
-void printData(int disponibile, int fotovoltaico, int utilizzo, int peak) {
+void updatePeak(PowerData data) {
+  if (data.photovoltaic > peak) { peak = data.photovoltaic; }
+}
+
+void printData(PowerData data, int peak) {
   int paddingBottom = 40;
   int distanceYLabelValue = 40;
   int totHeight = tft.height();
@@ -111,8 +119,8 @@ void printData(int disponibile, int fotovoltaico, int utilizzo, int peak) {
 
   tft.setTextSize(1);
   tft.setTextColor(TFT_YELLOW);
-  tft.setCursor(topLeftX - tft.textWidth(String(fotovoltaico), 7) / 2, topLeftY + distanceYLabelValue, 7);
-  tft.println(String(fotovoltaico));
+  tft.setCursor(topLeftX - tft.textWidth(String(data.photovoltaic), 7) / 2, topLeftY + distanceYLabelValue, 7);
+  tft.println(String(data.photovoltaic));
 
   // Utilizzo
   tft.setTextSize(1);
@@ -122,8 +130,8 @@ void printData(int disponibile, int fotovoltaico, int utilizzo, int peak) {
 
   tft.setTextSize(1);
   tft.setTextColor(TFT_YELLOW);
-  tft.setCursor(topRightX - tft.textWidth(String(utilizzo), 7) / 2, topRightY + distanceYLabelValue, 7);
-  tft.println(String(utilizzo));
+  tft.setCursor(topRightX - tft.textWidth(String(data.use), 7) / 2, topRightY + distanceYLabelValue, 7);
+  tft.println(String(data.use));
 
   // Disponibile
   tft.setTextSize(1);
@@ -132,15 +140,15 @@ void printData(int disponibile, int fotovoltaico, int utilizzo, int peak) {
   tft.println("DISPONIBILE");
 
   // Change text color based on the value of "disponibile"
-  if (disponibile < 0) {
+  if (data.available < 0) {
     tft.setTextColor(TFT_RED, TFT_BLACK);
   } else {
     tft.setTextColor(TFT_GREEN, TFT_BLACK);
   }
 
   tft.setTextSize(1);
-  tft.setCursor(bottomLeftX - tft.textWidth(String(disponibile), 7) / 2, bottomLeftY + distanceYLabelValue, 7);
-  tft.println(String(disponibile));
+  tft.setCursor(bottomLeftX - tft.textWidth(String(data.available), 7) / 2, bottomLeftY + distanceYLabelValue, 7);
+  tft.println(String(data.available));
 
   // Picco
   tft.setTextSize(1);
@@ -168,6 +176,7 @@ void setup() {
   initWiFi();
   Serial.print("RSSI: ");
   Serial.println(WiFi.RSSI());
+  data = {0}; // Initializes all members to 0
   peak = 0;
 }
 
@@ -181,13 +190,9 @@ void loop() {
 
     if (statusCode > 0) {
 
-      PowerData powerData = getPowerData(responseBody);
-
-      int disponibile = powerData.disponibile;
-      int fotovoltaico = powerData.fotovoltaico;
-      int utilizzo = fotovoltaico - disponibile;
-      if (fotovoltaico > peak) { peak = fotovoltaico; }
-      printData(disponibile, fotovoltaico, utilizzo, peak);
+      data = getPowerData(responseBody);
+      updatePeak(data);      
+      printData(data, peak);
 
       progressBarAndDelay();
       
