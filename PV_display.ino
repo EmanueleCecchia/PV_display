@@ -147,9 +147,9 @@ void printData(PowerData data, int peak) {
   tft.fillScreen(TFT_BLACK);
 
   printVariable("FOTOVOLTAICO", data.photovoltaic, positions.topLeft, distanceYLabelValue);
-  printVariable("UTILIZZO", data.use, positions.topRight, distanceYLabelValue);
-  printVariable("DISPONIBILE", data.available, positions.bottomLeft, distanceYLabelValue, true);
-  printVariable("PICCO", peak, positions.bottomRight, distanceYLabelValue);
+  printVariable("UTILIZZO", data.use, positions.bottomLeft, distanceYLabelValue);
+  printVariable("DISPONIBILE", data.available, positions.bottomRight, distanceYLabelValue, true);
+  printVariable("Fvp", peak, positions.topRight, distanceYLabelValue);
 }
 
 void setup() {
