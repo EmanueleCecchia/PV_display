@@ -54,8 +54,38 @@ int peak;
 
 void initWiFi() {
   WiFi.mode(WIFI_STA);
+
+  // Scan for available networks
+  Serial.println("Scanning for available networks...");
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(0, 0);
+  tft.println("Scanning WiFi...");
+
+  int n = WiFi.scanNetworks();
+  if (n == 0) {
+    Serial.println("No networks found");
+    tft.println("No networks found");
+  } else {
+    Serial.printf("%d networks found:\n", n);
+    tft.printf("%d networks found:\n", n);
+
+    for (int i = 0; i < n; ++i) {
+      Serial.printf("%d: %s (%d dBm)\n", i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+
+      String ssidStr = WiFi.SSID(i);
+      tft.printf("%s (%d)\n", ssidStr.c_str(), WiFi.RSSI(i));
+
+      delay(100);
+    }
+  }
+
+  delay(5000);
+
+  // Connect to your configured WiFi
   WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi ..");
+  //Serial.print("Connecting to WiFi ..");
+  tft.print("\n");
   tft.print("Connecting to: "); tft.println(ssid);
   tft.print("Shelly IP: "); tft.println(shelly_ip);
   while (WiFi.status() != WL_CONNECTED) {
