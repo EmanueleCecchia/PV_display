@@ -1,12 +1,20 @@
 #include <WiFi.h>
 #include <ArduinoHttpClient.h>
 #include <TFT_eSPI.h> 
+#include <Preferences.h> // Library to save data to flash memory
 #include "credentials.h"
 
+// --- Global Objects ---
 WiFiClient wifiClient;
-HttpClient httpClient = HttpClient(wifiClient, shelly_ip, 80);
+// We will initialize HttpClient dynamically, not here, because the IP might change.
+HttpClient* httpClient = nullptr; 
 
 TFT_eSPI tft = TFT_eSPI();
+Preferences preferences; // Create Preferences object
+
+// --- Variables ---
+String currentShellyIp;  // Holds the mutable IP address
+bool isScanning = false;
 
 struct PowerData {
   int available;
@@ -28,90 +36,162 @@ struct Positions {
    struct Position bottomRight;
 };
 
+// --- Helper Functions ---
+
 struct Positions calculatePositions(int width, int height, int paddingBottom) {
    struct Positions pos;
-   
    pos.topLeft.x = width / 4;
    pos.topLeft.y = height / 4 - paddingBottom;
-   
    pos.topRight.x = width / 4 * 3;
    pos.topRight.y = height / 4 - paddingBottom;
-   
    pos.bottomCenter.x = width / 2;
    pos.bottomCenter.y = height / 4 * 3 - paddingBottom;
-   
    pos.bottomLeft.x = width / 4;
    pos.bottomLeft.y = height / 4 * 3 - paddingBottom;
-   
    pos.bottomRight.x = width / 4 * 3;
    pos.bottomRight.y = height / 4 * 3 - paddingBottom;
-   
    return pos;
 }
 
 PowerData data;
 int peak;
 
+// Initialize the HttpClient with the current IP
+void initHttpClient() {
+  if (httpClient != nullptr) {
+    delete httpClient; // Free old memory if it exists
+  }
+  // Convert String to const char* for the library
+  httpClient = new HttpClient(wifiClient, currentShellyIp.c_str(), 80);
+}
+
 void initWiFi() {
   WiFi.mode(WIFI_STA);
 
-  // Scan for available networks
-  Serial.println("Scanning for available networks...");
+  // Visuals for scanning
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(0, 0);
-  tft.println("Scanning WiFi...");
+  tft.println("Initializing WiFi...");
 
-  int n = WiFi.scanNetworks();
-  if (n == 0) {
-    Serial.println("No networks found");
-    tft.println("No networks found");
-  } else {
-    Serial.printf("%d networks found:\n", n);
-    tft.printf("%d networks found:\n", n);
+  // Load saved IP or use default
+  preferences.begin("shelly-cfg", false); // Namespace "shelly-cfg"
+  currentShellyIp = preferences.getString("saved_ip", shelly_ip); // Default to credentials.h if empty
+  preferences.end();
 
-    for (int i = 0; i < n; ++i) {
-      Serial.printf("%d: %s (%d dBm)\n", i + 1, WiFi.SSID(i).c_str(), WiFi.RSSI(i));
-
-      String ssidStr = WiFi.SSID(i);
-      tft.printf("%s (%d)\n", ssidStr.c_str(), WiFi.RSSI(i));
-
-      delay(100);
-    }
-  }
-
-  delay(5000);
-
-  // Connect to your configured WiFi
   WiFi.begin(ssid, password);
-  //Serial.print("Connecting to WiFi ..");
-  tft.print("\n");
+  
   tft.print("Connecting to: "); tft.println(ssid);
-  tft.print("Shelly IP: "); tft.println(shelly_ip);
+  tft.print("Target IP: "); tft.println(currentShellyIp);
+  
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print('.');
-    delay(1000);
+    delay(500);
   }
+  Serial.println("");
   Serial.println(WiFi.localIP());
+  
+  // Setup the HTTP client with the loaded IP
+  initHttpClient();
+}
+
+// Function to scan the network if connection is lost
+void scanForShelly() {
+  isScanning = true;
+  tft.fillScreen(TFT_RED);
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextSize(1);
+  tft.setCursor(0, 0);
+  tft.println("LOST CONNECTION!");
+  tft.println("Scanning 192.168.1.x ...");
+  
+  String baseIP = "192.168.1.";
+  
+  // Set a very short timeout for scanning to speed it up
+  wifiClient.setTimeout(100); 
+
+  for (int i = 1; i < 255; i++) {
+    String testIP = baseIP + i;
+    
+    // Optional: Visual update every 10 IPs to reduce flicker
+    if (i % 5 == 0) {
+      tft.setCursor(0, 40);
+      tft.fillRect(0, 40, tft.width(), 20, TFT_RED); // Clear line
+      tft.print("Checking: "); tft.println(testIP);
+    }
+
+    // Try to connect strictly to port 80 first
+    if (wifiClient.connect(testIP.c_str(), 80)) {
+      Serial.print("Found open port at: "); Serial.println(testIP);
+      wifiClient.stop(); // Close the raw test connection
+      
+      // Now verify it is actually the Shelly by asking for status
+      HttpClient testHttp(wifiClient, testIP.c_str(), 80);
+      testHttp.beginRequest();
+      testHttp.get("/status");
+      if (String(shelly_username) != "" && String(shelly_password) != "") {
+         testHttp.sendBasicAuth(shelly_username, shelly_password);
+      }
+      testHttp.endRequest();
+
+      int statusCode = testHttp.responseStatusCode();
+      if (statusCode > 0 && statusCode < 400) {
+        // FOUND IT!
+        Serial.println("Shelly confirmed at: " + testIP);
+        tft.fillScreen(TFT_GREEN);
+        tft.setCursor(0, 0);
+        tft.println("FOUND NEW IP!");
+        tft.println(testIP);
+        
+        // Save to memory
+        preferences.begin("shelly-cfg", false);
+        preferences.putString("saved_ip", testIP);
+        preferences.end();
+        
+        // Update global variable and client
+        currentShellyIp = testIP;
+        initHttpClient();
+        
+        delay(2000); // Show success message
+        isScanning = false;
+        
+        // Reset timeout to normal
+        wifiClient.setTimeout(5000); 
+        return; 
+      }
+    }
+  }
+  
+  // If we finish the loop and find nothing
+  tft.fillScreen(TFT_BLACK);
+  tft.println("Scan failed. Retrying...");
+  wifiClient.setTimeout(5000); // Reset timeout
+  delay(2000);
 }
 
 void shellyHttpRequest() {
+    if(httpClient == nullptr) return;
+
     String url = "/status";
-    httpClient.beginRequest();
-    httpClient.get(url);
+    httpClient->beginRequest(); // Use -> because it is a pointer now
+    httpClient->get(url);
 
     if (String(shelly_username) != "" && String(shelly_password) != "") {
-      httpClient.sendBasicAuth(shelly_username, shelly_password);
+      httpClient->sendBasicAuth(shelly_username, shelly_password);
     }
 
-    httpClient.endRequest();
+    httpClient->endRequest();
 }
 
 PowerData getPowerData(String responseBody) {
-  PowerData data;
+  PowerData data = {0,0,0,0}; // Initialize safety
+
+  if (responseBody.length() < 10) return data; // Basic validation
 
   // Extract "available"
   int disponibile_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
+  if(disponibile_start == -1) return data; // Error parsing
+  
   int disponibile_end = responseBody.indexOf(",", disponibile_start);
   String disponibile_str = responseBody.substring(disponibile_start + 8, disponibile_end);
   data.available = (int)disponibile_str.toFloat();
@@ -128,24 +208,23 @@ PowerData getPowerData(String responseBody) {
   return data;
 }
 
+void drawProgressBarSmooth(int progress) {
+  int barWidth = tft.width() - 4;  
+  int barHeight = 10;              
+  int x = 2;                       
+  int y = tft.height() - barHeight - 2; 
+
+  int filledWidth = map(progress, 0, 100, 0, barWidth);
+  tft.fillRect(x, y, filledWidth, barHeight, TFT_WHITE);
+}
+
 void progressBarAndDelay() {
     int progress = 0;
-    tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY);  // Background bar
+    tft.fillRect(2, tft.height() - 12, tft.width() - 4, 10, TFT_DARKGREY); 
     for (progress = 0; progress <= 100; progress++) {
       drawProgressBarSmooth(progress);
       delay(50);
     }
-}
-
-void drawProgressBarSmooth(int progress) {
-  int barWidth = tft.width() - 4;  // Width of the progress bar (leaving some margin)
-  int barHeight = 10;              // Height of the progress bar
-  int x = 2;                       // X position for the progress bar
-  int y = tft.height() - barHeight - 2;  // Y position near the bottom
-
-  // Draw the filled portion of the progress bar
-  int filledWidth = map(progress, 0, 100, 0, barWidth);
-  tft.fillRect(x, y, filledWidth, barHeight, TFT_WHITE);
 }
 
 void updatePeak(PowerData data) {
@@ -186,42 +265,44 @@ void setup() {
   Serial.begin(115200);
   delay(10);
   
-  // Initialize TFT display
   tft.init();
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
 
-  // Initialize Wi-Fi
   initWiFi();
+  
   Serial.print("RSSI: ");
   Serial.println(WiFi.RSSI());
-  data = {0}; // Initializes all members to 0
+  data = {0, 0, 0, 0}; 
   peak = 0;
 }
 
 void loop() {
-  // Make sure WiFi is connected
   if (WiFi.status() == WL_CONNECTED) {
 
     shellyHttpRequest();
-    int statusCode = httpClient.responseStatusCode();
-    String responseBody = httpClient.responseBody();
+    
+    // Note: httpClient is now a pointer, so we use arrow -> 
+    int statusCode = httpClient->responseStatusCode();
+    String responseBody = httpClient->responseBody();
 
+    // Check if request was successful
     if (statusCode > 0) {
-
       data = getPowerData(responseBody);
       updatePeak(data);      
       printData(data, peak);
-
       progressBarAndDelay();
-      
     } else {
       Serial.println("Error on HTTP request: " + String(statusCode));
+      Serial.println("Could not reach Shelly at " + currentShellyIp);
+      
+      // TRIGGER SCAN
+      scanForShelly();
     }
+  } else {
+    // Reconnect WiFi if lost
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) { delay(500); }
   }
-
-  // Wait before sending another request
-  //delay(5000);
 }
-
