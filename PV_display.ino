@@ -1,19 +1,17 @@
 #include <WiFi.h>
 #include <ArduinoHttpClient.h>
 #include <TFT_eSPI.h> 
-#include <Preferences.h> // Library to save data to flash memory
+#include <Preferences.h>
 #include "credentials.h"
 
-// --- Global Objects ---
 WiFiClient wifiClient;
 // We will initialize HttpClient dynamically, not here, because the IP might change.
 HttpClient* httpClient = nullptr; 
 
 TFT_eSPI tft = TFT_eSPI();
-Preferences preferences; // Create Preferences object
+Preferences preferences;
 
-// --- Variables ---
-String currentShellyIp;  // Holds the mutable IP address
+String currentShellyIp;
 bool isScanning = false;
 
 struct PowerData {
@@ -35,8 +33,6 @@ struct Positions {
    struct Position bottomLeft;
    struct Position bottomRight;
 };
-
-// --- Helper Functions ---
 
 struct Positions calculatePositions(int width, int height, int paddingBottom) {
    struct Positions pos;
@@ -75,7 +71,7 @@ void initWiFi() {
   tft.println("Initializing WiFi...");
 
   // Load saved IP or use default
-  preferences.begin("shelly-cfg", false); // Namespace "shelly-cfg"
+  preferences.begin("shelly-cfg", false);
   currentShellyIp = preferences.getString("saved_ip", shelly_ip); // Default to credentials.h if empty
   preferences.end();
 
@@ -107,25 +103,23 @@ void scanForShelly() {
   
   String baseIP = "192.168.1.";
   
-  // Set a very short timeout for scanning to speed it up
   wifiClient.setTimeout(100); 
 
   for (int i = 1; i < 255; i++) {
     String testIP = baseIP + i;
     
-    // Optional: Visual update every 10 IPs to reduce flicker
     if (i % 5 == 0) {
       tft.setCursor(0, 40);
-      tft.fillRect(0, 40, tft.width(), 20, TFT_RED); // Clear line
+      tft.fillRect(0, 40, tft.width(), 20, TFT_RED);
       tft.print("Checking: "); tft.println(testIP);
     }
 
     // Try to connect strictly to port 80 first
     if (wifiClient.connect(testIP.c_str(), 80)) {
       Serial.print("Found open port at: "); Serial.println(testIP);
-      wifiClient.stop(); // Close the raw test connection
+      wifiClient.stop();
       
-      // Now verify it is actually the Shelly by asking for status
+      // Verify it is actually the Shelly by asking for status
       HttpClient testHttp(wifiClient, testIP.c_str(), 80);
       testHttp.beginRequest();
       testHttp.get("/status");
@@ -148,14 +142,12 @@ void scanForShelly() {
         preferences.putString("saved_ip", testIP);
         preferences.end();
         
-        // Update global variable and client
         currentShellyIp = testIP;
         initHttpClient();
         
-        delay(2000); // Show success message
+        delay(2000);
         isScanning = false;
         
-        // Reset timeout to normal
         wifiClient.setTimeout(5000); 
         return; 
       }
@@ -165,7 +157,7 @@ void scanForShelly() {
   // If we finish the loop and find nothing
   tft.fillScreen(TFT_BLACK);
   tft.println("Scan failed. Retrying...");
-  wifiClient.setTimeout(5000); // Reset timeout
+  wifiClient.setTimeout(5000);
   delay(2000);
 }
 
@@ -173,7 +165,7 @@ void shellyHttpRequest() {
     if(httpClient == nullptr) return;
 
     String url = "/status";
-    httpClient->beginRequest(); // Use -> because it is a pointer now
+    httpClient->beginRequest(); // Using -> because it is a pointer
     httpClient->get(url);
 
     if (String(shelly_username) != "" && String(shelly_password) != "") {
@@ -184,13 +176,13 @@ void shellyHttpRequest() {
 }
 
 PowerData getPowerData(String responseBody) {
-  PowerData data = {0,0,0,0}; // Initialize safety
+  PowerData data = {0,0,0,0}; 
 
-  if (responseBody.length() < 10) return data; // Basic validation
+  if (responseBody.length() < 10) return data; 
 
   // Extract "available"
   int disponibile_start = responseBody.indexOf("\"power\":", responseBody.indexOf("\"emeters\":"));
-  if(disponibile_start == -1) return data; // Error parsing
+  if(disponibile_start == -1) return data;
   
   int disponibile_end = responseBody.indexOf(",", disponibile_start);
   String disponibile_str = responseBody.substring(disponibile_start + 8, disponibile_end);
@@ -283,7 +275,6 @@ void loop() {
 
     shellyHttpRequest();
     
-    // Note: httpClient is now a pointer, so we use arrow -> 
     int statusCode = httpClient->responseStatusCode();
     String responseBody = httpClient->responseBody();
 
