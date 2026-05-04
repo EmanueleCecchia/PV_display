@@ -63,32 +63,57 @@ void initHttpClient() {
 
 void initWiFi() {
   WiFi.mode(WIFI_STA);
-
-  // Visuals for scanning
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(0, 0);
   tft.println("Initializing WiFi...");
 
-  // Load saved IP or use default
-  preferences.begin("shelly-cfg", false);
-  currentShellyIp = preferences.getString("saved_ip", shelly_ip); // Default to credentials.h if empty
-  preferences.end();
+  // Always try credentials.h first, ignore saved IP at boot
+  currentShellyIp = shelly_ip;
 
   WiFi.begin(ssid, password);
-  
   tft.print("Connecting to: "); tft.println(ssid);
   tft.print("Target IP: "); tft.println(currentShellyIp);
-  
+
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print('.');
     delay(500);
   }
-  Serial.println("");
   Serial.println(WiFi.localIP());
-  
-  // Setup the HTTP client with the loaded IP
   initHttpClient();
+}
+
+void tryFallbackOrScan() {
+  // Try saved IP if it exists and is different from current
+  preferences.begin("shelly-cfg", true); // read-only
+  String savedIp = preferences.getString("saved_ip", "");
+  preferences.end();
+
+  if (savedIp != "" && savedIp != currentShellyIp) {
+    tft.fillScreen(TFT_ORANGE);
+    tft.setTextColor(TFT_WHITE);
+    tft.setCursor(0, 0);
+    tft.println("Trying saved IP...");
+    tft.println(savedIp);
+    Serial.println("Trying saved IP: " + savedIp);
+
+    currentShellyIp = savedIp;
+    initHttpClient();
+
+    // Test it immediately
+    shellyHttpRequest();
+    int statusCode = httpClient->responseStatusCode();
+    String body = httpClient->responseBody();
+
+    if (statusCode > 0 && body.indexOf("emeters") != -1) {
+      Serial.println("Saved IP works: " + savedIp);
+      return; // all good, loop() will continue normally
+    }
+    // Saved IP also failed, fall through to scan
+    Serial.println("Saved IP failed too, scanning...");
+  }
+
+  scanForShelly();
 }
 
 // Function to scan the network if connection is lost
@@ -129,10 +154,16 @@ void scanForShelly() {
       testHttp.endRequest();
 
       int statusCode = testHttp.responseStatusCode();
-      if (statusCode > 0 && statusCode < 400) {
+      String body = testHttp.responseBody();
+      if (statusCode > 0 && statusCode < 400 && body.indexOf("emeters") != -1) {
         // FOUND IT!
         Serial.println("Shelly confirmed at: " + testIP);
-        tft.fillScreen(TFT_GREEN);
+
+        tft.setCursor(0, 0);
+        tft.println("FOUND NEW IP!");
+        tft.println(testIP);
+        
+
         tft.setCursor(0, 0);
         tft.println("FOUND NEW IP!");
         tft.println(testIP);
@@ -286,10 +317,7 @@ void loop() {
       progressBarAndDelay();
     } else {
       Serial.println("Error on HTTP request: " + String(statusCode));
-      Serial.println("Could not reach Shelly at " + currentShellyIp);
-      
-      // TRIGGER SCAN
-      scanForShelly();
+      tryFallbackOrScan();
     }
   } else {
     // Reconnect WiFi if lost
